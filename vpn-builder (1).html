@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPN Builder — Tech Cert Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0d1117;
+  --surface2: #131920;
+  --surface3: #1a2230;
+  --border: #1e2d3d;
+  --border2: #243447;
+  --accent: #00d4aa;
+  --accent2: #0099ff;
+  --amber: #f0a500;
+  --red: #e05252;
+  --text: #c9d1d9;
+  --text2: #8b949e;
+  --text3: #484f58;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  font-size: 15px;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,12,16,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 40px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 17px;
+  color: var(--accent); letter-spacing: 2px; text-transform: uppercase;
+}
+.logo span { color: var(--text3); font-weight: 400; }
+.header-right { display: flex; align-items: center; gap: 14px; }
+.cert-badge {
+  font-size: 11px; padding: 4px 12px;
+  border-radius: 3px; border: 1px solid; letter-spacing: 1px;
+}
+.cert-badge.sec { border-color: #0099ff44; color: var(--accent2); background: #0099ff0d; }
+.cert-badge.ccna { border-color: #f0a50044; color: var(--amber); background: #f0a5000d; }
+.cert-badge.ceh { border-color: #e0525244; color: var(--red); background: #e052520d; }
+#scoreBadge {
+  font-size: 15px; font-weight: 700;
+  padding: 5px 20px;
+  border: 1px solid var(--amber);
+  color: var(--amber); border-radius: 3px;
+  background: #f0a5000d;
+}
+.scenario-bar {
+  display: flex; gap: 2px;
+  padding: 0 40px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.tab {
+  padding: 14px 26px; font-size: 13px;
+  color: var(--text3); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s; white-space: nowrap; letter-spacing: 0.5px;
+}
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab.done { color: #00d4aa88; }
+
+main { position: relative; z-index: 1; padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+
+/* TOPOLOGY */
+.topology {
+  display: grid;
+  grid-template-columns: 1fr 220px 1fr;
+  margin-bottom: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.building { padding: 28px 26px; }
+.building-a { border-right: 1px solid var(--border); }
+.building-b { border-left: 1px solid var(--border); }
+.building-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px; font-weight: 600;
+  color: var(--accent2); text-align: center; margin-bottom: 3px;
+}
+.building-b .building-name { color: var(--amber); }
+.building-sub { font-size: 12px; color: var(--text3); text-align: center; margin-bottom: 22px; letter-spacing: 0.5px; }
+.sec-label {
+  font-size: 11px; color: var(--text3);
+  letter-spacing: 2px; text-transform: uppercase;
+  text-align: center; margin: 16px 0 8px;
+}
+.field-label { font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+.internet-col {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; padding: 28px 0;
+}
+.cloud-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 14px; color: var(--text2);
+  text-align: center; width: 160px;
+}
+.tunnel-wrap { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tunnel-line { display: flex; align-items: center; width: 100%; }
+.t-dash { flex: 1; border-top: 2px dashed var(--accent); opacity: 0.5; }
+.t-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.tunnel-lbl { font-size: 11px; color: var(--accent); letter-spacing: 0.5px; opacity: 0.8; text-align: center; }
+
+/* SELECTS */
+select {
+  width: 100%;
+  background: #0a0f15;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 10px 36px 10px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  transition: border-color 0.15s;
+}
+select:focus { outline: none; border-color: var(--accent); }
+select:hover { border-color: var(--border2); filter: brightness(1.1); }
+select.correct { border-color: var(--accent); color: var(--accent); background-color: #00d4aa0d; }
+select.wrong { border-color: var(--red); color: var(--red); background-color: #e052520d; }
+select option { background: #0d1117; color: var(--text); }
+
+/* PROGRESS */
+.progress-bar {
+  height: 3px; background: var(--surface3);
+  margin-bottom: 24px; border-radius: 2px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.4s ease;
+}
+
+/* PHASES */
+.phases-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 18px; margin-bottom: 22px;
+}
+.phase-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px;
+}
+.phase-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.phase-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 600;
+  color: var(--text); letter-spacing: 0.5px;
+}
+.phase-count {
+  font-size: 12px; color: var(--text3);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 14px;
+}
+.phase-row {
+  display: flex; align-items: center;
+  gap: 16px; margin-bottom: 8px;
+}
+.phase-row-label {
+  font-size: 13px; color: var(--text2);
+  min-width: 120px; text-align: right; flex-shrink: 0;
+}
+
+/* ACTIONS */
+.actions {
+  display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap; margin-bottom: 24px;
+}
+.btn {
+  padding: 11px 28px; border-radius: 5px;
+  font-size: 13px; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px; transition: all 0.15s; border: 1px solid;
+}
+.btn-validate { border-color: var(--accent); color: var(--accent); background: transparent; }
+.btn-validate:hover { background: #00d4aa15; }
+.btn-hint { border-color: var(--border2); color: var(--text2); background: transparent; }
+.btn-hint:hover { background: var(--surface2); }
+.btn-reset { border-color: var(--border2); color: var(--text2); background: transparent; }
+.btn-reset:hover { border-color: var(--red); color: var(--red); }
+.btn-next { border-color: var(--accent2); color: var(--accent2); background: transparent; display: none; }
+.btn-next.visible { display: inline-block; }
+.btn-next:hover { background: #0099ff15; }
+#feedback { margin-left: auto; font-size: 14px; font-weight: 700; }
+
+/* HINT BOX */
+.hint-box {
+  display: none;
+  background: var(--surface);
+  border: 1px solid #f0a50033;
+  border-radius: 10px;
+  padding: 22px 26px;
+  margin-bottom: 20px;
+  font-size: 13px; color: var(--text2); line-height: 2;
+}
+.hint-box.visible { display: block; }
+.hint-box strong { color: var(--amber); }
+
+/* LEADERBOARD */
+.leaderboard {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px;
+  margin-bottom: 32px;
+}
+.leaderboard.visible { display: block; }
+.lb-header {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; color: var(--text3);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+}
+.lb-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px; padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-name { color: var(--text2); }
+.lb-score { color: var(--amber); font-weight: 700; }
+.lb-time { color: var(--accent); }
+.lb-perfect { color: var(--accent); font-size: 12px; margin-left: 10px; }
+
+@keyframes scan {
+  0% { top: -2px; } 100% { top: 100%; }
+}
+.scanline {
+  position: fixed; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,170,0.12), transparent);
+  pointer-events: none; z-index: 999;
+  animation: scan 10s linear infinite;
+}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<header>
+  <div class="logo">VPN<span>builder</span> <span style="color:var(--text3);font-size:12px;font-weight:300">// cert lab</span></div>
+  <div class="header-right">
+    <span class="cert-badge sec">SEC+</span>
+    <span class="cert-badge ccna">CCNA</span>
+    <span class="cert-badge ceh">CEH</span>
+    <span id="scoreBadge">0 / 20</span>
+  </div>
+</header>
+
+<div class="scenario-bar" id="scenarioBar"></div>
+
+<main>
+  <div class="topology">
+    <div class="building building-a">
+      <div class="building-name" id="nameA">Building A</div>
+      <div class="building-sub" id="subA">HQ — New York</div>
+      <div class="sec-label">LAN</div>
+      <div class="field-label">Network</div>
+      <select data-slot="lanA" onchange="handleSelect(this)"><option value="">— select —</option></select>
+      <div class="sec-label">VPN Gateway A</div>
+      <div class="field-label">Private IP</div>
+      <select data-slot="privA" onchange="handleSelect(this)"><option value="">— select —</option></select>
+      <div class="field-label">Public (WAN) IP</div>
+      <select data-slot="pubA" onchange="handleSelect(this)"><option value="">— select —</option></select>
+    </div>
+
+    <div class="internet-col">
+      <div class="cloud-box">☁ Internet</div>
+      <div class="tunnel-wrap">
+        <div class="tunnel-line">
+          <div class="t-dash"></div><div class="t-dot"></div><div class="t-dash"></div>
+        </div>
+        <div class="tunnel-lbl" id="tunnelLbl">IPsec ESP — encrypted</div>
+      </div>
+    </div>
+
+    <div class="building building-b">
+      <div class="building-name" id="nameB">Building B</div>
+      <div class="building-sub" id="subB">Branch — London</div>
+      <div class="sec-label">LAN</div>
+      <div class="field-label">Network</div>
+      <select data-slot="lanB" onchange="handleSelect(this)"><option value="">— select —</option></select>
+      <div class="sec-label">VPN Gateway B</div>
+      <div class="field-label">Private IP</div>
+      <select data-slot="privB" onchange="handleSelect(this)"><option value="">— select —</option></select>
+      <div class="field-label">Public (WAN) IP</div>
+      <select data-slot="pubB" onchange="handleSelect(this)"><option value="">— select —</option></select>
+    </div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="phases-grid" id="phasesGrid"></div>
+  <div class="hint-box" id="hintBox"></div>
+
+  <div class="actions">
+    <button class="btn btn-validate" onclick="validate()">▶ Validate</button>
+    <button class="btn btn-hint" id="hintBtn" onclick="toggleHint()">? Show hints</button>
+    <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-next" id="nextBtn" onclick="nextScenario()">Next scenario →</button>
+    <span id="feedback"></span>
+  </div>
+
+  <div class="leaderboard" id="leaderboard">
+    <div class="lb-header">Session results</div>
+    <div id="lbRows"></div>
+  </div>
+</main>
+
+<script>
+const scenarios = [
+  {
+    name: "Site-to-site IPsec",
+    nameA: "Building A", subA: "HQ — New York",
+    nameB: "Building B", subB: "Branch — London",
+    tunnel: "IPsec ESP — encrypted",
+    topoOptions: {
+      lanA:  { answer: "192.168.1.0/24", choices: ["192.168.1.0/24","192.168.2.0/24","10.0.0.0/8","172.16.0.0/24","192.168.0.0/16"] },
+      privA: { answer: "10.0.0.1",       choices: ["10.0.0.1","10.0.0.2","192.168.1.1","172.16.0.1","10.1.1.1"] },
+      pubA:  { answer: "203.0.113.1",    choices: ["203.0.113.1","198.51.100.1","203.0.113.10","8.8.8.8","1.1.1.1"] },
+      lanB:  { answer: "192.168.2.0/24", choices: ["192.168.2.0/24","192.168.1.0/24","10.0.0.0/8","172.16.1.0/24","192.168.0.0/16"] },
+      privB: { answer: "10.0.0.2",       choices: ["10.0.0.2","10.0.0.1","192.168.2.1","172.16.0.2","10.1.1.2"] },
+      pubB:  { answer: "198.51.100.1",   choices: ["198.51.100.1","203.0.113.1","198.51.100.10","8.8.4.4","1.0.0.1"] },
+    },
+    phases: [
+      { title: "Phase 1 — IKE SA", rows: [
+        { label: "IKE version",  slot: "ikeVer",  answer: "IKEv2",          choices: ["IKEv2","IKEv1","IKEv3","SSLv3","TLSv1.2"] },
+        { label: "Encryption",   slot: "ikeEnc",  answer: "AES-256",        choices: ["AES-256","AES-128","3DES","DES","RC4"] },
+        { label: "Integrity",    slot: "ikeInt",  answer: "SHA-256",        choices: ["SHA-256","SHA-1","MD5","SHA-512","CRC32"] },
+        { label: "DH Group",     slot: "ikeDH",   answer: "DH-14",          choices: ["DH-14","DH-2","DH-5","DH-1","DH-7"] },
+        { label: "Auth method",  slot: "ikeAuth", answer: "Pre-shared key", choices: ["Pre-shared key","RSA certs","Password","Biometric","SNMP"] },
+        { label: "Lifetime",     slot: "ikeLT",   answer: "86400s",         choices: ["86400s","3600s","28800s","604800s","300s"] },
+        { label: "DPD action",   slot: "dpd",     answer: "DPD restart",    choices: ["DPD restart","DPD clear","DPD hold","DPD ignore","DPD none"] },
+      ]},
+      { title: "Phase 2 — IPsec SA", rows: [
+        { label: "Protocol",   slot: "ipsecProto", answer: "ESP",          choices: ["ESP","AH","GRE","L2TP","PPTP"] },
+        { label: "Encryption", slot: "ipsecEnc",   answer: "AES-256",      choices: ["AES-256","AES-128","3DES","DES","Blowfish"] },
+        { label: "Integrity",  slot: "ipsecInt",   answer: "SHA-256",      choices: ["SHA-256","SHA-1","MD5","SHA-384","RIPEMD"] },
+        { label: "Mode",       slot: "ipsecMode",  answer: "Tunnel mode",  choices: ["Tunnel mode","Transport mode","Bridge mode","Native mode","Hybrid mode"] },
+        { label: "PFS",        slot: "ipsecPFS",   answer: "DH-14",        choices: ["DH-14","DH-2","DH-5","Disabled","DH-1"] },
+        { label: "Lifetime",   slot: "ipsecLT",    answer: "3600s",        choices: ["3600s","86400s","1800s","28800s","600s"] },
+        { label: "NAT-T port", slot: "natt",       answer: "UDP 4500",     choices: ["UDP 4500","UDP 500","TCP 443","UDP 1194","TCP 4500"] },
+      ]},
+    ],
+    hints: [
+      "<strong>IKEv2</strong> (RFC 7296) is the modern standard — faster, supports MOBIKE. Never use IKEv1 for new deployments.",
+      "<strong>AES-256</strong>: NIST-approved symmetric cipher (FIPS 197). <strong>SHA-256</strong>: HMAC integrity (FIPS 180-4). Both required for CNSA compliance.",
+      "<strong>DH Group 14</strong> = 2048-bit MODP. DH-2 (768-bit) and DH-5 (1024-bit) are broken — NSA deprecated both.",
+      "<strong>Pre-shared key</strong>: simple, requires secure out-of-band exchange. RSA certs preferred in production.",
+      "<strong>Phase 1 lifetime: 86400s</strong> (24h). Phase 2: <strong>3600s</strong> (1h). Shorter P2 = less data exposed per session key.",
+      "<strong>ESP</strong> (IP proto 50): encrypts + authenticates. <strong>AH</strong> (IP proto 51): authenticates only, no encryption. Always use ESP.",
+      "<strong>Tunnel mode</strong>: entire IP packet encapsulated + new IP header. Correct for gateway-to-gateway. Transport mode = host-to-host.",
+      "<strong>PFS DH-14</strong>: new DH exchange per Phase 2 — compromise of Phase 1 key doesn't expose Phase 2 traffic.",
+      "<strong>DPD restart</strong>: when peer is detected dead, tunnel restarts automatically. 'clear' drops it; 'hold' waits.",
+      "<strong>NAT-T UDP 4500</strong>: when NAT is in path, ESP is encapsulated in UDP 4500 (RFC 3948).",
+    ]
+  },
+  {
+    name: "Remote Access VPN",
+    nameA: "Corp HQ", subA: "VPN Concentrator",
+    nameB: "Remote Worker", subB: "Home / Coffee Shop",
+    tunnel: "SSL/TLS tunnel — OpenVPN",
+    topoOptions: {
+      lanA:  { answer: "10.10.0.0/16",   choices: ["10.10.0.0/16","192.168.0.0/16","172.16.0.0/12","10.0.0.0/8","10.10.1.0/24"] },
+      privA: { answer: "10.10.1.1",      choices: ["10.10.1.1","10.10.0.1","192.168.1.1","172.16.1.1","10.0.0.1"] },
+      pubA:  { answer: "203.0.113.50",   choices: ["203.0.113.50","198.51.100.50","203.0.113.1","8.8.8.8","1.1.1.1"] },
+      lanB:  { answer: "10.10.99.0/24",  choices: ["10.10.99.0/24","192.168.99.0/24","10.99.0.0/24","172.16.99.0/24","10.10.0.0/24"] },
+      privB: { answer: "10.10.99.5",     choices: ["10.10.99.5","10.10.1.5","192.168.1.5","10.10.99.1","172.16.99.5"] },
+      pubB:  { answer: "198.51.100.77",  choices: ["198.51.100.77","203.0.113.77","198.51.100.1","8.8.4.4","1.0.0.1"] },
+    },
+    phases: [
+      { title: "VPN Protocol Config", rows: [
+        { label: "Protocol",    slot: "vpnProto",  answer: "OpenVPN",       choices: ["OpenVPN","WireGuard","PPTP","L2TP","SSTP"] },
+        { label: "Port",        slot: "vpnPort",   answer: "UDP 1194",      choices: ["UDP 1194","TCP 443","UDP 51820","UDP 500","TCP 1194"] },
+        { label: "Cipher",      slot: "vpnCipher", answer: "AES-256-GCM",   choices: ["AES-256-GCM","AES-128-CBC","ChaCha20","3DES","RC4-128"] },
+        { label: "Auth",        slot: "vpnAuth",   answer: "TLS + cert",    choices: ["TLS + cert","Pre-shared key","Password only","RADIUS only","PAP"] },
+        { label: "Key exchange", slot: "vpnKex",   answer: "ECDH P-256",    choices: ["ECDH P-256","DH-14","RSA-2048","ECDH P-384","DH-2"] },
+        { label: "Renegotiate", slot: "vpnReneg",  answer: "3600s",         choices: ["3600s","86400s","28800s","600s","Never"] },
+      ]},
+      { title: "Auth & Policy", rows: [
+        { label: "MFA type",      slot: "mfa",      answer: "TOTP",       choices: ["TOTP","SMS OTP","No MFA","Push notification","HOTP"] },
+        { label: "User auth",     slot: "userAuth", answer: "LDAP/AD",    choices: ["LDAP/AD","Local DB","RADIUS","SAML 2.0","Anonymous"] },
+        { label: "Split tunnel",  slot: "split",    answer: "Disabled",   choices: ["Disabled","Enabled","Partial","Per-app","Dynamic"] },
+        { label: "DNS leak prot.", slot: "dns",     answer: "Enforced",   choices: ["Enforced","Optional","Ignored","Auto","Disabled"] },
+        { label: "Kill switch",   slot: "kill",     answer: "Enabled",    choices: ["Enabled","Disabled","Auto","Soft","Hard"] },
+        { label: "Cert type",     slot: "certType", answer: "X.509 v3",   choices: ["X.509 v3","X.509 v1","Self-signed","PGP","PKCS#7"] },
+      ]},
+    ],
+    hints: [
+      "<strong>OpenVPN</strong>: uses TLS for control channel, UDP 1194 by default. TCP 443 for firewall bypass.",
+      "<strong>AES-256-GCM</strong>: AEAD cipher — encryption + authentication in one pass. Faster than CBC + HMAC.",
+      "<strong>ECDH P-256</strong>: Elliptic Curve DH on NIST P-256. Same security as DH-14 with smaller keys. FIPS 186-4.",
+      "<strong>TOTP</strong> (RFC 6238): time-based one-time password. More phishing-resistant than SMS OTP.",
+      "<strong>LDAP/AD</strong>: integrates VPN auth with corporate directory — users log in with domain credentials.",
+      "<strong>Split tunnel disabled</strong>: ALL traffic routed through VPN. Required for compliance and BYOD security.",
+      "<strong>DNS leak protection</strong>: ensures DNS queries go through VPN tunnel, not ISP resolver.",
+      "<strong>Kill switch</strong>: drops all traffic if VPN disconnects — prevents data leakage over plain internet.",
+      "<strong>X.509 v3</strong>: supports SANs, extended key usage, OCSP stapling. Required by modern TLS.",
+    ]
+  },
+  {
+    name: "GRE over IPsec",
+    nameA: "Router A", subA: "HQ — Cisco IOS",
+    nameB: "Router B", subB: "Data Center",
+    tunnel: "GRE encap + IPsec ESP",
+    topoOptions: {
+      lanA:  { answer: "172.16.0.0/24",  choices: ["172.16.0.0/24","172.16.1.0/24","10.0.0.0/24","192.168.1.0/24","172.16.0.0/16"] },
+      privA: { answer: "10.1.1.1",       choices: ["10.1.1.1","10.1.1.2","10.0.0.1","172.16.0.1","192.168.1.1"] },
+      pubA:  { answer: "203.0.113.10",   choices: ["203.0.113.10","203.0.113.1","198.51.100.10","8.8.8.8","1.1.1.1"] },
+      lanB:  { answer: "172.16.1.0/24",  choices: ["172.16.1.0/24","172.16.0.0/24","10.1.0.0/24","192.168.2.0/24","172.16.1.0/16"] },
+      privB: { answer: "10.1.1.2",       choices: ["10.1.1.2","10.1.1.1","10.0.0.2","172.16.1.1","192.168.2.1"] },
+      pubB:  { answer: "198.51.100.10",  choices: ["198.51.100.10","198.51.100.1","203.0.113.10","8.8.4.4","1.0.0.1"] },
+    },
+    phases: [
+      { title: "GRE Tunnel", rows: [
+        { label: "Protocol",   slot: "greProto",  answer: "GRE (IP 47)",     choices: ["GRE (IP 47)","IPIP (IP 4)","L2TP (IP 115)","ESP (IP 50)","AH (IP 51)"] },
+        { label: "Tunnel src", slot: "greSrc",    answer: "10.1.1.1",        choices: ["10.1.1.1","10.1.1.2","10.0.0.1","172.16.0.1","192.168.1.1"] },
+        { label: "Tunnel dst", slot: "greDst",    answer: "10.1.1.2",        choices: ["10.1.1.2","10.1.1.1","10.0.0.2","172.16.1.1","192.168.2.1"] },
+        { label: "MTU",        slot: "greMTU",    answer: "1476 bytes",      choices: ["1476 bytes","1500 bytes","1400 bytes","1492 bytes","1480 bytes"] },
+        { label: "Routing",    slot: "greRoute",  answer: "OSPF over GRE",   choices: ["OSPF over GRE","BGP over GRE","Static route","RIP v2","EIGRP"] },
+        { label: "Keepalive",  slot: "greKA",     answer: "10s / 3 retries", choices: ["10s / 3 retries","30s / 5 retries","No keepalive","5s / 2 retries","60s / 3 retries"] },
+      ]},
+      { title: "IPsec Profile", rows: [
+        { label: "IPsec mode",  slot: "imode", answer: "Transport mode", choices: ["Transport mode","Tunnel mode","Hybrid mode","Bridge mode","Native mode"] },
+        { label: "Encryption",  slot: "ienc",  answer: "AES-256",       choices: ["AES-256","AES-128","3DES","DES","ChaCha20"] },
+        { label: "Integrity",   slot: "iint",  answer: "SHA-256",       choices: ["SHA-256","SHA-1","MD5","SHA-384","HMAC-MD5"] },
+        { label: "IKE version", slot: "ike2",  answer: "IKEv2",         choices: ["IKEv2","IKEv1","IKEv2+EAP","IKEv1 Aggressive","SSLv3"] },
+        { label: "DH Group",    slot: "idh",   answer: "DH-19",         choices: ["DH-19","DH-14","DH-2","DH-5","DH-20"] },
+        { label: "Lifetime",    slot: "ilt",   answer: "86400s",        choices: ["86400s","3600s","28800s","604800s","300s"] },
+      ]},
+    ],
+    hints: [
+      "<strong>GRE (IP protocol 47)</strong>: encapsulates multicast, IPv6, routing protocols — things plain IPsec cannot carry natively.",
+      "<strong>MTU 1476 bytes</strong>: GRE adds 24-byte overhead (4B GRE + 20B outer IP). 1500 - 24 = 1476. Set on tunnel interface to avoid fragmentation.",
+      "<strong>GRE alone has no encryption.</strong> IPsec is applied on top — this is the 'GRE over IPsec' pattern.",
+      "<strong>Transport mode</strong> for IPsec: GRE already provides the outer IP header. Tunnel mode would double-encapsulate unnecessarily.",
+      "<strong>OSPF over GRE</strong>: OSPF adjacency forms inside the tunnel, enabling dynamic routing and auto-failover.",
+      "<strong>DH Group 19</strong> = ECDH 256-bit (NIST P-256). Supersedes DH-14 on modern platforms. Defined in RFC 8031.",
+      "<strong>Keepalive 10s / 3 retries</strong>: router sends GRE probes. After 3 missed replies (30s), tunnel declared down.",
+    ]
+  }
+];
+
+let currentScenario = 0;
+let sessionScores = [];
+let scenarioStartTime = Date.now();
+let hintVisible = false;
+
+function buildTabs() {
+  const bar = document.getElementById('scenarioBar');
+  bar.innerHTML = '';
+  scenarios.forEach((s, i) => {
+    const t = document.createElement('div');
+    t.className = 'tab' + (i === currentScenario ? ' active' : '') + (sessionScores[i] ? ' done' : '');
+    t.textContent = (sessionScores[i] ? '✓ ' : '') + s.name;
+    t.onclick = () => { currentScenario = i; loadScenario(); };
+    bar.appendChild(t);
+  });
+}
+
+function populateSelect(sel, choices, answer) {
+  sel.innerHTML = '<option value="">— select —</option>';
+  choices.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+  sel.value = '';
+  sel.className = '';
+  sel.dataset.answer = answer;
+}
+
+function loadScenario() {
+  const s = scenarios[currentScenario];
+  hintVisible = false;
+  document.getElementById('hintBox').classList.remove('visible');
+  document.getElementById('hintBtn').textContent = '? Show hints';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('nextBtn').classList.remove('visible');
+  document.getElementById('nameA').textContent = s.nameA;
+  document.getElementById('subA').textContent = s.subA;
+  document.getElementById('nameB').textContent = s.nameB;
+  document.getElementById('subB').textContent = s.subB;
+  document.getElementById('tunnelLbl').textContent = s.tunnel;
+
+  document.querySelectorAll('.topology select').forEach(sel => {
+    const key = sel.dataset.slot;
+    const cfg = s.topoOptions[key];
+    if (cfg) populateSelect(sel, cfg.choices, cfg.answer);
+  });
+
+  buildPhases();
+  updateProgress();
+  buildTabs();
+  scenarioStartTime = Date.now();
+  document.getElementById('scoreBadge').textContent = '0 / ' + getTotalSlots();
+}
+
+function buildPhases() {
+  const s = scenarios[currentScenario];
+  const grid = document.getElementById('phasesGrid');
+  grid.innerHTML = '';
+  s.phases.forEach((phase, pi) => {
+    const card = document.createElement('div');
+    card.className = 'phase-card';
+    card.innerHTML = `<div class="phase-header"><span class="phase-title">${phase.title}</span><span class="phase-count" id="pc${pi}">0 / ${phase.rows.length}</span></div>`;
+    phase.rows.forEach(row => {
+      const div = document.createElement('div');
+      div.className = 'phase-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'phase-row-label';
+      lbl.textContent = row.label;
+      const sel = document.createElement('select');
+      sel.dataset.slot = row.slot;
+      sel.style.flex = '1';
+      sel.style.marginBottom = '0';
+      populateSelect(sel, row.choices, row.answer);
+      sel.addEventListener('change', () => handleSelect(sel));
+      div.appendChild(lbl);
+      div.appendChild(sel);
+      card.appendChild(div);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function handleSelect(sel) {
+  sel.className = '';
+  updateProgress();
+}
+
+function updateProgress() {
+  const s = scenarios[currentScenario];
+  const allSelects = document.querySelectorAll('select[data-slot]');
+  const filled = [...allSelects].filter(sel => sel.value !== '').length;
+  const total = getTotalSlots();
+  document.getElementById('progressFill').style.width = (filled / total * 100) + '%';
+  s.phases.forEach((phase, pi) => {
+    const pf = phase.rows.filter(row => {
+      const sel = document.querySelector(`select[data-slot="${row.slot}"]`);
+      return sel && sel.value !== '';
+    }).length;
+    const el = document.getElementById('pc' + pi);
+    if (el) el.textContent = pf + ' / ' + phase.rows.length;
+  });
+}
+
+function getTotalSlots() {
+  const s = scenarios[currentScenario];
+  return Object.keys(s.topoOptions).length + s.phases.reduce((a, p) => a + p.rows.length, 0);
+}
+
+function validate() {
+  let correct = 0, total = 0;
+  document.querySelectorAll('select[data-slot]').forEach(sel => {
+    if (!sel.dataset.answer) return;
+    total++;
+    if (sel.value === '') return;
+    if (sel.value === sel.dataset.answer) { sel.className = 'correct'; correct++; }
+    else { sel.className = 'wrong'; }
+  });
+  document.getElementById('scoreBadge').textContent = correct + ' / ' + total;
+  const fb = document.getElementById('feedback');
+  if (correct === total) {
+    const elapsed = Math.round((Date.now() - scenarioStartTime) / 1000);
+    fb.textContent = '✓ PERFECT — ' + elapsed + 's';
+    fb.style.color = 'var(--accent)';
+    sessionScores[currentScenario] = { score: correct, total, time: elapsed };
+    document.getElementById('nextBtn').classList.add('visible');
+    updateLeaderboard();
+    buildTabs();
+  } else if (correct / total >= 0.75) {
+    fb.textContent = correct + '/' + total + ' — almost there';
+    fb.style.color = 'var(--amber)';
+  } else {
+    fb.textContent = correct + '/' + total + ' — keep going';
+    fb.style.color = 'var(--red)';
+  }
+}
+
+function toggleHint() {
+  hintVisible = !hintVisible;
+  const box = document.getElementById('hintBox');
+  box.classList.toggle('visible', hintVisible);
+  document.getElementById('hintBtn').textContent = hintVisible ? '✕ Hide hints' : '? Show hints';
+  if (hintVisible) {
+    box.innerHTML = '<strong>Hints:</strong><br><br>' +
+      scenarios[currentScenario].hints.map(h => '• ' + h).join('<br><br>');
+  }
+}
+
+function resetAll() {
+  document.querySelectorAll('select[data-slot]').forEach(sel => { sel.value = ''; sel.className = ''; });
+  updateProgress();
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('scoreBadge').textContent = '0 / ' + getTotalSlots();
+  document.getElementById('nextBtn').classList.remove('visible');
+  scenarioStartTime = Date.now();
+}
+
+function nextScenario() {
+  if (currentScenario < scenarios.length - 1) { currentScenario++; loadScenario(); }
+}
+
+function updateLeaderboard() {
+  const lb = document.getElementById('leaderboard');
+  const rows = document.getElementById('lbRows');
+  lb.classList.add('visible');
+  rows.innerHTML = '';
+  sessionScores.forEach((entry, i) => {
+    if (!entry) return;
+    const div = document.createElement('div');
+    div.className = 'lb-row';
+    const perfect = entry.score === entry.total;
+    div.innerHTML = `<span class="lb-name">${scenarios[i].name}</span><span class="lb-score">${entry.score}/${entry.total}${perfect ? ' <span class="lb-perfect">★ PERFECT</span>' : ''}</span><span class="lb-time">${entry.time}s</span>`;
+    rows.appendChild(div);
+  });
+}
+
+loadScenario();
+</script>
+</body>
+</html>
